@@ -21,18 +21,20 @@ namespace Anki.Tracks
 
 		public void Run()
 		{
-			System.IO.File.WriteAllText(@"tracks.html", "<html><body>");
+			System.IO.File.WriteAllText(@"tracks.txt", "");
+			System.IO.File.WriteAllText(@"tracks.html", "<html><body><table><tr>");
 
-			var palette = new Palette(4 + 2, 6 + 2);
+			//set your available pieces here
+			var palette = new Palette(straight: 4 + 2, corner: 6 + 2);
 
 			try
 			{
-				Recurse(new List<Cell> {new Cell(new Pos(0, 0), 1)}, palette, 1);
-				Recurse(new List<Cell> {new Cell(new Pos(0, 0), 5)}, palette, 1);
+				Recurse(new List<Cell> { new Cell(new Pos(0, 0), 1) }, palette, 1);
+				Recurse(new List<Cell> { new Cell(new Pos(0, 0), 5) }, palette, 1);
 			}
 			finally
 			{
-				System.IO.File.AppendAllText(@"tracks.html", "</body></html>");
+				System.IO.File.AppendAllText(@"tracks.html", "</tr></table></body></html>");
 			}
 		}
 
@@ -63,6 +65,7 @@ namespace Anki.Tracks
 				}
 				else
 				{
+					//straight track over (or under) another straight track here
 					if (hitcell.Value.Mode == 1 || hitcell.Value.Mode == 2)
 					{
 						DoNext(cells, palette, level, 3, last, nextpos);
@@ -98,18 +101,30 @@ namespace Anki.Tracks
 
 		private void Good(List<Cell> cells)
 		{
-			if (cells.Count == 14) //track length
+			//if (cells.Count == 14) //track length
 			{
-				Console.WriteLine(cells.Count);
-
 				var orig = GenerateMap(cells);
 
+				//remove already found tracks
 				if (!HasSame(orig))
 				{
 					all.Add(orig);
 
-					var text = GenerateHtml(cells);
-					System.IO.File.AppendAllText(@"tracks.html", text);
+					var text = GenerateTxt(cells);
+					System.IO.File.AppendAllText(@"tracks.txt", text);
+
+					var html = GenerateHtml(cells);
+
+					html = "<td>" + html + "</td>";
+
+					if (all.Count != 0 && all.Count % 32 == 0)
+					{
+						html = "</tr><tr>" + html;
+					}
+
+					System.IO.File.AppendAllText(@"tracks.html", html);
+
+					Console.WriteLine(text);
 				}
 			}
 		}
@@ -229,10 +244,6 @@ namespace Anki.Tracks
 		{
 			var text = new StringBuilder();
 
-			text.AppendLine("<br />");
-			text.AppendLine(all.Count + ": " + String.Join("-", cells.Select(a => a.Mode)));
-			text.AppendLine("<br />");
-
 			var minx = cells.Min(a => a.Pos.X);
 			var maxx = cells.Max(a => a.Pos.X);
 			var miny = cells.Min(a => a.Pos.Y);
@@ -269,7 +280,7 @@ namespace Anki.Tracks
 			var miny = cells.Min(a => a.Pos.Y);
 			var maxy = cells.Max(a => a.Pos.Y);
 
-			var ret = new int[maxx - minx + 1, maxy - miny + 1];
+			var ret = new int[(maxx - minx + 1) * 3, (maxy - miny + 1) * 3];
 
 			for (var y = miny; y <= maxy; ++y)
 			{
@@ -277,14 +288,80 @@ namespace Anki.Tracks
 				{
 					var pos = new Pos(x, y);
 
-					var symbol = 0;
+					var cell = HitCell(cells, pos);
 
-					if (cells.Any(a => a.Pos == pos))
+					var symbol = new[,]
 					{
-						symbol = 1;
+						{0, 0, 0},
+						{0, 0, 0},
+						{0, 0, 0}
+					};
+
+					if (cell != null)
+					{
+						if (cell.Value.Mode == 1 || cell.Value.Mode == 2)
+						{
+							symbol = new[,]
+							{
+								{0, 1, 0},
+								{0, 1, 0},
+								{0, 1, 0}
+							};
+						}
+						else if (cell.Value.Mode == 3 || cell.Value.Mode == 4)
+						{
+							symbol = new[,]
+							{
+								{0, 0, 0},
+								{1, 1, 1},
+								{0, 0, 0}
+							};
+						}
+						else if (cell.Value.Mode == 5 || cell.Value.Mode == 6)
+						{
+							symbol = new[,]
+							{
+								{0, 0, 0},
+								{0, 1, 1},
+								{0, 1, 0}
+							};
+						}
+						else if (cell.Value.Mode == 7 || cell.Value.Mode == 8)
+						{
+							symbol = new[,]
+							{
+								{0, 0, 0},
+								{1, 1, 0},
+								{0, 1, 0}
+							};
+						}
+						else if (cell.Value.Mode == 9 || cell.Value.Mode == 10)
+						{
+							symbol = new[,]
+							{
+								{0, 1, 0},
+								{0, 1, 1},
+								{0, 0, 0}
+							};
+						}
+						else if (cell.Value.Mode == 11 || cell.Value.Mode == 12)
+						{
+							symbol = new[,]
+							{
+								{0, 1, 0},
+								{1, 1, 0},
+								{0, 0, 0}
+							};
+						}
 					}
 
-					ret[x - minx, y - miny] = symbol;
+					for (var ya = 0; ya <= 2; ++ya)
+					{
+						for (var xa = 0; xa <= 2; ++xa)
+						{
+							ret[(x - minx) * 3 + xa, (y - miny) * 3 + ya] = symbol[xa, ya];
+						}
+					}
 				}
 			}
 
@@ -386,12 +463,12 @@ namespace Anki.Tracks
 
 	public struct Palette
 	{
-		readonly int streight;
+		readonly int straight;
 		readonly int corner;
 
-		public Palette(int streight, int corner)
+		public Palette(int straight, int corner)
 		{
-			this.streight = streight;
+			this.straight = straight;
 			this.corner = corner;
 		}
 
@@ -399,7 +476,7 @@ namespace Anki.Tracks
 		{
 			if (mode >= 1 && mode <= 4)
 			{
-				return streight > 0;
+				return straight > 0;
 			}
 			else if (mode >= 5 && mode <= 12)
 			{
@@ -411,7 +488,7 @@ namespace Anki.Tracks
 
 		public Palette Without(int mode)
 		{
-			var nexts = streight;
+			var nexts = straight;
 			var nextc = corner;
 
 			if (mode >= 1 && mode <= 4) nexts--;
@@ -422,7 +499,7 @@ namespace Anki.Tracks
 
 		public bool IsEmpty()
 		{
-			return streight == 0 && corner == 0;
+			return straight == 0 && corner == 0;
 		}
 	}
 
