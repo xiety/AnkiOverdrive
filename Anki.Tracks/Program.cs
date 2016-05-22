@@ -117,7 +117,7 @@ namespace Anki.Tracks
 
 					html = "<td>" + html + "</td>";
 
-					if (all.Count != 0 && all.Count % 32 == 0)
+					if (all.Count != 0 && (all.Count - 1) % 16 == 0)
 					{
 						html = "</tr><tr>" + html;
 					}
@@ -157,7 +157,7 @@ namespace Anki.Tracks
 			{
 				for (var y = 0; y < leny; ++y)
 				{
-					ret[y, x] = map[x, y];
+					ret[leny - y - 1, x] = map[x, y];
 				}
 			}
 
@@ -169,12 +169,32 @@ namespace Anki.Tracks
 			if (HasMap(map)) return true;
 
 			var flip = FlipHor(map);
+
 			if (HasMap(flip)) return true;
 
 			flip = FlipVert(map);
+
 			if (HasMap(flip)) return true;
 
 			return false;
+		}
+
+		private void DumpMap(int[,] map)
+		{
+			var lenx = map.GetLength(0);
+			var leny = map.GetLength(1);
+
+			for (var y = 0; y < leny; ++y)
+			{
+				for (var x = 0; x < lenx; ++x)
+				{
+					Console.Write(map[x, y]);
+				}
+
+				Console.WriteLine();
+			}
+
+			Console.WriteLine();
 		}
 
 		private int[,] FlipVert(int[,] map)
@@ -288,84 +308,85 @@ namespace Anki.Tracks
 				{
 					var pos = new Pos(x, y);
 
-					var cell = HitCell(cells, pos);
-
-					var symbol = new[,]
+					foreach (var hit in cells.Where(cell => cell.Pos == pos))
 					{
-						{0, 0, 0},
-						{0, 0, 0},
-						{0, 0, 0}
-					};
+						var symbol = GetPircePattern(hit.Mode);
 
-					if (cell != null)
-					{
-						if (cell.Value.Mode == 1 || cell.Value.Mode == 2)
+						for (var ya = 0; ya <= 2; ++ya)
 						{
-							symbol = new[,]
+							for (var xa = 0; xa <= 2; ++xa)
 							{
-								{0, 1, 0},
-								{0, 1, 0},
-								{0, 1, 0}
-							};
-						}
-						else if (cell.Value.Mode == 3 || cell.Value.Mode == 4)
-						{
-							symbol = new[,]
-							{
-								{0, 0, 0},
-								{1, 1, 1},
-								{0, 0, 0}
-							};
-						}
-						else if (cell.Value.Mode == 5 || cell.Value.Mode == 6)
-						{
-							symbol = new[,]
-							{
-								{0, 0, 0},
-								{0, 1, 1},
-								{0, 1, 0}
-							};
-						}
-						else if (cell.Value.Mode == 7 || cell.Value.Mode == 8)
-						{
-							symbol = new[,]
-							{
-								{0, 0, 0},
-								{1, 1, 0},
-								{0, 1, 0}
-							};
-						}
-						else if (cell.Value.Mode == 9 || cell.Value.Mode == 10)
-						{
-							symbol = new[,]
-							{
-								{0, 1, 0},
-								{0, 1, 1},
-								{0, 0, 0}
-							};
-						}
-						else if (cell.Value.Mode == 11 || cell.Value.Mode == 12)
-						{
-							symbol = new[,]
-							{
-								{0, 1, 0},
-								{1, 1, 0},
-								{0, 0, 0}
-							};
-						}
-					}
-
-					for (var ya = 0; ya <= 2; ++ya)
-					{
-						for (var xa = 0; xa <= 2; ++xa)
-						{
-							ret[(x - minx) * 3 + xa, (y - miny) * 3 + ya] = symbol[xa, ya];
+								if (symbol[ya, xa] == 1)
+									ret[(x - minx) * 3 + xa, (y - miny) * 3 + ya] = 1;
+							}
 						}
 					}
 				}
 			}
 
 			return ret;
+		}
+
+		private static int[,] GetPircePattern(int mode)
+		{
+			switch (mode)
+			{
+				case 1:
+				case 2:
+					return new[,]
+					{
+						{0, 1, 0},
+						{0, 1, 0},
+						{0, 1, 0}
+					};
+				case 3:
+				case 4:
+					return new[,]
+					{
+						{0, 0, 0},
+						{1, 1, 1},
+						{0, 0, 0}
+					};
+				case 5:
+				case 6:
+					return new[,]
+					{
+						{0, 0, 0},
+						{0, 1, 1},
+						{0, 1, 0}
+					};
+				case 7:
+				case 8:
+					return new[,]
+					{
+						{0, 0, 0},
+						{1, 1, 0},
+						{0, 1, 0}
+					};
+				case 9:
+				case 10:
+					return new[,]
+					{
+						{0, 1, 0},
+						{0, 1, 1},
+						{0, 0, 0}
+					};
+				case 11:
+				case 12:
+					return new[,]
+					{
+						{0, 1, 0},
+						{1, 1, 0},
+						{0, 0, 0}
+					};
+				default:
+					return new[,]
+					{
+						{0, 0, 0},
+						{0, 0, 0},
+						{0, 0, 0}
+					};
+			}
 		}
 
 		private string GenerateTxt(List<Cell> cells)
